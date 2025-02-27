@@ -16,7 +16,7 @@ const exponentChars = new Set([...fractionChars, "e","E","+","-"])
 // @ts-ignore For some reason, vscode thinks this regex is unacceptable, despite it matching the mdn docs
 const ALLOWED_UNICODE_STRING = /\uhhhh/
 
-const parse = (text: string): jsonValue => {
+export const parse = (text: string): jsonValue => {
   let index = 0
 
   const skipWhitespace = (): void => {
@@ -31,9 +31,9 @@ const parse = (text: string): jsonValue => {
     } else if (text[index] === closureChar) {
       return
     } else if (index >= text.length) {
-      throw new SyntaxError("JSON Parse Error: Unexpected EOF")
+      throw SyntaxError("JSON Parse Error: Unexpected EOF")
     } else {
-      throw new SyntaxError(`JSON Parse Error: Unexpected character ${text[index]} while parsing object`)
+      throw SyntaxError(`JSON Parse Error: Unexpected character ${text[index]} while parsing object`)
     }
   }
   
@@ -56,7 +56,7 @@ const parse = (text: string): jsonValue => {
         result = result.concat(text[index])
         index++
       } else {
-        throw new SyntaxError(`JSON Parse Error: Unexpected character ${text[index]} while parsing number`)
+        throw SyntaxError(`JSON Parse Error: Unexpected character ${text[index]} while parsing number`)
       }
 
       while (numberChars.has(text[index])) {
@@ -70,7 +70,7 @@ const parse = (text: string): jsonValue => {
         result = result.concat(text[index])
         index++
       } else {
-        throw new SyntaxError(`JSON Parse Error: Unexpected character ${text[index]} while parsing number`)
+        throw SyntaxError(`JSON Parse Error: Unexpected character ${text[index]} while parsing number`)
       }
 
       if (text[index] === "+" || text[index] === "-") {
@@ -129,7 +129,7 @@ const parse = (text: string): jsonValue => {
       }
 
       if (index >= text.length) {
-        throw new SyntaxError("JSON Parse Error: Unexpected EOF")
+        throw SyntaxError("JSON Parse Error: Unexpected EOF")
       }
     }
     index++ // skip "
@@ -149,24 +149,27 @@ const parse = (text: string): jsonValue => {
         if (text[index] === ":") {
           index++ // skip :
         } else {
-          throw new SyntaxError(`JSON Parse Error: Unexpected character ${text[index]}. Expected : while parsing object`)
+          throw SyntaxError(`JSON Parse Error: Unexpected character ${text[index]}. Expected : while parsing object`)
         }
         const nextValue = getValue()
         result[nextKey] = nextValue
+      } else if (text[index] === "}") { 
+        break
+      } else if (text[index] === undefined) {
+        throw SyntaxError(`JSON Parse Error: Unexpected EOF`)
       } else {
-        throw new SyntaxError(`JSON Parse Error: Unexpected character ${text[index]}. Expected " while parsing object`)
+        throw SyntaxError(`JSON Parse Error: Unexpected character ${text[index]}. Expected " while parsing object`)
       }
-
       skipWhitespace()
       expectCommaOrClosure("}")
     }
-  
     index++ // skip }
     return result
   }
   
   const getArray = (): Array<jsonValue> => {
     let result: jsonValue = []
+    skipWhitespace()
     while (text[index] != "]") {
       const nextValue = getValue()
       result.push(nextValue)
@@ -211,59 +214,15 @@ const parse = (text: string): jsonValue => {
       case "f":
         return getBoolean()
       default:
-        throw new Error(`Invalid character at index ${index}. ${text.slice(index, index + 15)} is not valid json`)
+        throw Error(`Invalid character at index ${index}. ${text.slice(index, index + 15)} is not valid json`)
     }
   }
 
   const result = getValue()
   skipWhitespace()
   if (index != text.length) {
-    throw new SyntaxError(`JSON Parse Error: Unexpected character ${text[index]} at ${index}`)
+    throw SyntaxError(`JSON Parse Error: Unexpected character ${text[index]} at ${index}`)
   } else {
     return result
   }
 }
-
-const testString = `{
-  "false": false,
-  "true": true,
-  "null": null,
-  "string": "string",
-  "number": -0.5e23,
-  "array": [
-    false,
-    true,
-    null,
-    "🚗",
-    "\u0041",
-    45,
-    [],
-    {
-      "nested": true
-    }
-  ],
-  "nested_object": {
-    "false": false,
-    "true": true,
-    "null": null,
-    "string": "string",
-    "number": 0324789.3421e-239,
-    "array": [
-      false,
-      true,
-      null,
-      "🚗",
-      "\u0041",
-      45,
-      [],
-      {
-        "nested": true
-      }
-    ],
-    "doubly_nested_object": {
-      "foo": "bar"
-    } 
-  }
-}`
-
-console.log(parse(testString))
