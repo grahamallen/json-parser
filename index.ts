@@ -9,29 +9,12 @@ const stringEscapedCharacters = new Set([
   String.raw`\n`,
   String.raw`\r`,
   String.raw`\t`,
-  // TODO handle `\uhhhh`
 ])
-const numberChars = new Set([
-  "0",
-  "1",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-])
-const fractionChars = new Set([...numberChars, 
-  "."
-])
-const exponentChars = new Set([...fractionChars, 
-  "e",
-  "E",
-  "+",
-  "-"
-])
+const numberChars = new Set(["0","1","2","3","4","5","6","7","8","9"])
+const fractionChars = new Set([...numberChars, "."])
+const exponentChars = new Set([...fractionChars, "e","E","+","-"])
+// @ts-ignore For some reason, vscode thinks this regex is unacceptable, despite it matching the mdn docs
+const ALLOWED_UNICODE_STRING = /\uhhhh/
 
 const parse = (text: string): jsonValue => {
   let index = 0
@@ -130,9 +113,15 @@ const parse = (text: string): jsonValue => {
     while (text[index] != String.raw`"`) {
       if (text[index] === "\\") {
         const controlCharacter = text.slice(index, index + 2)
-        if (stringEscapedCharacters.has(text.slice(index, index + 2))) {
+        if (stringEscapedCharacters.has(controlCharacter)) {
           result = result.concat(controlCharacter)
           index += controlCharacter.length
+        } else if (controlCharacter === String.raw`\u`) {
+          const a = text.slice(index, index + 4)
+          if (a.match(ALLOWED_UNICODE_STRING)) {
+            result = result.concat(a)
+            index += a.length
+          }
         }
       } else {
         result = result.concat(text[index])
@@ -155,7 +144,6 @@ const parse = (text: string): jsonValue => {
         index++ // skip "
         const nextKey = getString()
 
-
         skipWhitespace()
 
         if (text[index] === ":") {
@@ -168,8 +156,7 @@ const parse = (text: string): jsonValue => {
       } else {
         throw new SyntaxError(`JSON Parse Error: Unexpected character ${text[index]}. Expected " while parsing object`)
       }
-      
-      
+
       skipWhitespace()
       expectCommaOrClosure("}")
     }
@@ -248,6 +235,7 @@ const testString = `{
     true,
     null,
     "🚗",
+    "\u0041",
     45,
     [],
     {
@@ -265,6 +253,7 @@ const testString = `{
       true,
       null,
       "🚗",
+      "\u0041",
       45,
       [],
       {
@@ -278,4 +267,3 @@ const testString = `{
 }`
 
 console.log(parse(testString))
-// console.log(parse("   "))
