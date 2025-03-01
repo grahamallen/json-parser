@@ -14,7 +14,7 @@ const numberChars = new Set(["0","1","2","3","4","5","6","7","8","9"])
 const fractionChars = new Set([...numberChars, "."])
 const exponentChars = new Set([...fractionChars, "e","E","+","-"])
 // @ts-ignore For some reason, vscode thinks this regex is unacceptable, despite it matching the mdn docs
-const ALLOWED_UNICODE_STRING = /\uhhhh/
+const ALLOWED_UNICODE_STRING = /[\u0000-\uFFFF]/
 
 export const parse = (text: string): jsonValue => {
   let index = 0
@@ -116,11 +116,14 @@ export const parse = (text: string): jsonValue => {
         if (stringEscapedCharacters.has(controlCharacter)) {
           result = result.concat(controlCharacter)
           index += controlCharacter.length
-        } else if (controlCharacter === String.raw`\u`) {
-          const a = text.slice(index, index + 4)
-          if (a.match(ALLOWED_UNICODE_STRING)) {
-            result = result.concat(a)
-            index += a.length
+        } else {
+          const hexCode = text.slice(index, index + 6)
+          if (hexCode.match(ALLOWED_UNICODE_STRING)) {
+            // TODO: fix the fact that `\uB52f` winds up as `\\uB52f` here
+            result += hexCode
+            index += hexCode.length
+          } else {
+            throw SyntaxError(`Invalid character at index ${index}. ${text.slice(index, index + 15)} is not valid json`)
           }
         }
       } else {

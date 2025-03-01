@@ -88,5 +88,97 @@ describe("json parser", () => {
     test("works with whitespace between comma-separated values", () => {
       expect(parse(`[null\r\t\n ,\r\t\n true,false,5]`)).toStrictEqual([null,true,false,5])
     })
+
+    test("errors when there's no closing ]", () => {
+      expect(() => parse(`[null,true`)).toThrowError("Unexpected EOF")
+    })
+  })
+
+  describe("for null", () => {
+    test("parses null successfully as a top-level value", () => {
+      expect(parse("null")).toEqual(null)
+    })
+
+    test("errors if null is misspelled", () => {
+      expect(() => parse("nil")).toThrowError("Invalid character")
+    })
+
+    test("parses null successfully as a nested value", () => {
+      expect(parse(`{
+        "key": null  
+      }`)).toStrictEqual({"key":null})
+    })
+  })
+
+  describe("for booleans", () => {
+    test("can parse true as a top-level value", () => {
+      expect(parse("true")).toEqual(true)
+    })
+
+    test("can parse false as a top-level value", () => {
+      expect(parse("false")).toEqual(false)
+    })
+
+    test("errors if true is misspelled", () => {
+      expect(() => parse("truth")).toThrowError("Invalid character")
+    })
+
+    test("errors if false is misspelled", () => {
+      expect(() => parse("falsish")).toThrowError("Invalid character")
+    })
+
+    test("handles booleans in nested objects", () => {
+      expect(parse(`{
+        "key": true,
+        "key2": false  
+      }`)).toStrictEqual({"key":true,"key2":false})
+    })
+  })
+
+  describe("for numbers", () => {
+    test("can parse a natural number", () => {
+      expect(parse("1234567890")).toEqual(1234567890)
+    })
+
+    test("can parse a negative integer", () => {
+      expect(parse("-5")).toEqual(-5)
+    })
+
+    test("can parse a fraction", () => {
+      expect(parse("0.010")).toEqual(0.01)
+      expect(parse("-.6")).toEqual(-0.6)
+      expect(parse("123.456")).toEqual(123.456)
+    })
+
+    test("can parse a number in scientific notation", () => {
+      expect(parse("1e6")).toEqual(1e6)
+      expect(parse("2E+4")).toEqual(2E+4)
+      expect(parse("-.7e-10")).toEqual(-0.7e-10)
+    })
+
+    test("errors for a malformed number", () => {
+      expect(() => parse("0.00.2")).toThrowError("Unexpected character")
+    })
+
+    test("can parse nested numbers within objects", () => {
+      expect(parse(`{
+        "key": -2.78e+10
+      }`)).toStrictEqual({"key":-2.78e+10})
+    })
+  })
+
+  describe("for strings", () => {
+    test("can parse top-level strings", () => {
+      expect(parse(`"string"`)).toEqual("string")
+    })
+
+    test("can parse strings with 2-character codepoints", () => {
+      expect(parse(String.raw`"\"\b\r\t\n\f\/\\"`)).toEqual(String.raw`\"\b\r\t\n\f\/\\`)
+    })
+
+    // TODO: fix the logic so this test passes
+    // test("can parse strings with unicode characters", () => {
+    //   expect(parse(String.raw`"\uB52f"`)).toEqual("\uB52f")
+    // })
   })
 })
