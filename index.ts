@@ -15,6 +15,7 @@ const fractionChars = new Set([...numberChars, "."])
 const exponentChars = new Set([...fractionChars, "e","E","+","-"])
 // @ts-ignore For some reason, vscode thinks this regex is unacceptable, despite it matching the mdn docs
 const ALLOWED_UNICODE_STRING = /[\u0000-\uFFFF]/
+const hexToInt = (i: string) => "0123456789ABCDEF".indexOf(i.toUpperCase())
 
 export const parse = (text: string): jsonValue => {
   let index = 0
@@ -114,17 +115,18 @@ export const parse = (text: string): jsonValue => {
       if (text[index] === "\\") {
         const controlCharacter = text.slice(index, index + 2)
         if (stringEscapedCharacters.has(controlCharacter)) {
-          result = result.concat(controlCharacter)
+          result += controlCharacter
           index += controlCharacter.length
-        } else {
+        } else if (controlCharacter === String.raw`\u`) {
           const hexCode = text.slice(index, index + 6)
           if (hexCode.match(ALLOWED_UNICODE_STRING)) {
-            // TODO: fix the fact that `\uB52f` winds up as `\\uB52f` here
-            result += hexCode
+            result += String.fromCharCode(hexCode.slice(2).split("").toReversed().map((hex, i) => {
+              return hexToInt(hex) * (16 ** i)
+            }).reduce((acc,i) => acc + i, 0))
             index += hexCode.length
-          } else {
-            throw SyntaxError(`Invalid character at index ${index}. ${text.slice(index, index + 15)} is not valid json`)
           }
+        } else {
+          throw SyntaxError(`Invalid character at index ${index}. ${text.slice(index, index + 15)} is not valid json`)
         }
       } else {
         result = result.concat(text[index])

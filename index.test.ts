@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { parse } from './index.js'
 
 describe("json parser", () => {
-  describe("for empty objects", () => {
+  describe("for objects", () => {
     test("works with empty object", () => {
       expect(parse("{}")).toStrictEqual({})
     })
@@ -18,9 +18,7 @@ describe("json parser", () => {
     test("errors when there's an unexpected letter", () => {
       expect(() => parse("{|")).toThrowError("Unexpected character")
     })
-  })
 
-  describe("for objects with key-value pairs", () => {
     test("works with a single KV pair", () => {
       expect(parse(`{
         "key": "value"
@@ -176,9 +174,24 @@ describe("json parser", () => {
       expect(parse(String.raw`"\"\b\r\t\n\f\/\\"`)).toEqual(String.raw`\"\b\r\t\n\f\/\\`)
     })
 
-    // TODO: fix the logic so this test passes
-    // test("can parse strings with unicode characters", () => {
-    //   expect(parse(String.raw`"\uB52f"`)).toEqual("\uB52f")
+    test("can parse strings with unicode characters", () => {
+      expect(parse(`"\uB52f"`)).toEqual("\uB52f")
+    })
+
+    test("errors when there is no closing string", () => {
+      expect(() => parse(`"string`)).toThrowError("Unexpected EOF")
+    })
+
+    test("errors when there's an unsupported control character", () => {
+      expect(() => parse(String.raw`"\j"`)).toThrowError("Invalid character")
+    })
+
+    test("only matches the first four numbers of a hex code", () => {
+      expect(parse(String.raw`"\uB52f00"`)).toEqual("\uB52f00")
+    })
+
+    // test("can handle nested strings", () => {
+    //   expect(parse(JSON.stringify({"key": JSON.stringify("test")}))).toEqual({"key": "\"test\""})
     // })
   })
 })
