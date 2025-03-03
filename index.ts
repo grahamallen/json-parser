@@ -1,15 +1,5 @@
 type jsonValue = null | boolean | number | string | { [Key: string]: jsonValue } | Array<jsonValue>
 const whitespaceChars = new Set(["\t", "\n", "\r", " "])
-const stringEscapedCharacters = new Set([
-  String.raw`\"`,
-  String.raw`\\`,
-  String.raw`\/`,
-  String.raw`\b`,
-  String.raw`\f`,
-  String.raw`\n`,
-  String.raw`\r`,
-  String.raw`\t`,
-])
 const numberChars = new Set(["0","1","2","3","4","5","6","7","8","9"])
 const fractionChars = new Set([...numberChars, "."])
 const exponentChars = new Set([...fractionChars, "e","E","+","-"])
@@ -114,19 +104,50 @@ export const parse = (text: string): jsonValue => {
     while (text[index] != String.raw`"`) {
       if (text[index] === "\\") {
         const controlCharacter = text.slice(index, index + 2)
-        if (stringEscapedCharacters.has(controlCharacter)) {
-          result += controlCharacter
-          index += controlCharacter.length
-        } else if (controlCharacter === String.raw`\u`) {
-          const hexCode = text.slice(index, index + 6)
-          if (hexCode.match(ALLOWED_UNICODE_STRING)) {
-            result += String.fromCharCode(hexCode.slice(2).split("").toReversed().map((hex, i) => {
-              return hexToInt(hex) * (16 ** i)
-            }).reduce((acc,i) => acc + i, 0))
+        switch (controlCharacter) {
+          case String.raw`\"`:
+            result += "\""
+            index += 2
+            break;
+          case String.raw`\b`:
+            result += "\b"
+            index += 2
+            break;
+          case String.raw`\f`:
+            result += "\f"
+            index += 2
+            break;
+          case String.raw`\\`:
+            result += "\\"
+            index += 2
+            break;
+          case String.raw`\/`:
+            result += "\/"
+            index += 2
+            break;
+          case String.raw`\n`:
+            result += "\n"
+            index += 2
+            break;
+          case String.raw`\r`:
+            result += "\r"
+            index += 2
+            break;
+          case String.raw`\t`:
+            result += "\t"
+            index += 2
+            break;
+          case String.raw`\u`:
+            const hexCode = text.slice(index, index + 6)
+            if (hexCode.match(ALLOWED_UNICODE_STRING)) {
+              result += String.fromCharCode(hexCode.slice(2).split("").toReversed().map((hex, i) => {
+                return hexToInt(hex) * (16 ** i)
+              }).reduce((acc,i) => acc + i, 0))
+            }
             index += hexCode.length
-          }
-        } else {
-          throw SyntaxError(`Invalid character at index ${index}. ${text.slice(index, index + 15)} is not valid json`)
+            break;
+          default:
+            throw SyntaxError(`Invalid character at index ${index}. ${text.slice(index, index + 15)} is not valid json`)
         }
       } else {
         result = result.concat(text[index])
